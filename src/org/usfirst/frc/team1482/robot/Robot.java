@@ -5,7 +5,7 @@
 /* the project.                                                               */
 /*----------------------------------------------------------------------------*/
 
-package org.usfirst.frc.team1482.Robot;
+package org.usfirst.frc.team1482.robot;
 
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
 
@@ -32,15 +32,16 @@ import java.lang.String;
 public class Robot extends IterativeRobot {
   
   int stickID = 0;
+  int stick1ID = 1;
   
-  int axisThrottleID = 1; // stick 1, y
-  int axisSteerID = 0; // stick 1, x
-  int axisRaiseID = 2;
-  int axisRaise1ID = 3;
-  int buttonGrabID = ; // don't forget to map this later
-  int buttonReleaseID = ;
-  int buttonLockID = ;
-  int buttonTransmissionID = 1; // a
+  int axisThrottleID = 1; // stick 1, l, y
+  int axisSteerID = 0; // stick 1, l, x
+  int axisRaiseID = 1; // stick 2, l, y
+  int axisRaise1ID = 5; // stick 2, r, y
+  int buttonGrabID = 6; // 2, r bumper
+  int buttonReleaseID = 5; // 2, l bumper
+  int buttonLockID = 1; // 2, a button
+  int buttonTransmissionID = 1; // 1, a button
   
   SendableChooser<String> chooser;
   Timer autoTimer;
@@ -49,6 +50,7 @@ public class Robot extends IterativeRobot {
   String gameData;
   
   Joystick stick;
+  Joystick stick1;
   
   DifferentialDrive drive;
   DifferentialDrive winch;
@@ -63,7 +65,7 @@ public class Robot extends IterativeRobot {
 	 * used for any initialization code.
 	 */
 	@Override
-	public void RobotInit() {
+	public void robotInit() {
 	  chooser = new SendableChooser<String>();
 	  chooser.addDefault("Center", "C");
     chooser.addObject("Left", "L");
@@ -73,6 +75,7 @@ public class Robot extends IterativeRobot {
     autoTimer = new Timer();
 	  
 	  stick = new Joystick(stickID);
+	  stick1 = new Joystick(stick1ID);
 	  
 	  WPI_TalonSRX motorLeft = new WPI_TalonSRX(0);
 	  WPI_TalonSRX motorLeft1 = new WPI_TalonSRX(1);
@@ -91,7 +94,7 @@ public class Robot extends IterativeRobot {
 	  
 	  drive = new DifferentialDrive(railLeft, railRight);
 	  winch = new DifferentialDrive(motorWinch, motorWinch);
-	  winch1 = new DifferentialDrive(motorWinch1, motorWinch);
+	  winch1 = new DifferentialDrive(motorWinch1, motorWinch1);
 	  grab = new DifferentialDrive(motorGrab, motorGrab1);
 	  
 	  lock = new DoubleSolenoid(2, 3);
@@ -134,14 +137,14 @@ public class Robot extends IterativeRobot {
       case "R":
         
         switch (gameData.charAt(0)) {
-          case "L":
+          case 'L':
             // No fuck that, just drive forwards
             if (autoTimer.get() < 2) {
               drive.arcadeDrive(1, 0);
             }
             break;
             
-          case "R":
+          case 'R':
             break;
         }
         
@@ -152,10 +155,10 @@ public class Robot extends IterativeRobot {
       case "L":
         
         switch (gameData.charAt(0)) {
-          case "L":
+          case 'L':
             break;
             
-          case "R":
+          case 'R':
             // No fuck that, just drive forwards
             drive.arcadeDrive(1, 0);
             Timer.delay(5000);
@@ -177,11 +180,17 @@ public class Robot extends IterativeRobot {
 	@Override
 	public void teleopPeriodic() {
 	  drive.arcadeDrive(stick.getRawAxis(axisThrottleID), -stick.getRawAxis(axisSteerID));
-	  winch.arcadeDrive(stick.getRawAxis(axisRaiseID), 0);
-	  winch1.arcadeDrive(stick.getRawAxis(axisRaise1ID), 0);
-	  grab.arcadeDrive(stick.getRawButton(buttonGrabID) ? 1 : (stick.getRawButton(buttonReleaseID) ? -1 : 0), 0);
+	  winch.arcadeDrive(stick1.getRawAxis(axisRaiseID), 0);
 	  
-	  lock.set(stick.getRawButton(buttonLockID) ? DoubleSolenoid.Value.kReverse : DoubleSolenoid.Value.kForward);
+	  if (stick1.getRawButton(buttonLockID)) {
+      winch1.arcadeDrive(stick1.getRawAxis(axisRaise1ID), 0);
+	  } else {
+	    winch1.arcadeDrive(0, 0);
+	  }
+	  
+	  grab.arcadeDrive(stick1.getRawButton(buttonGrabID) ? 1 : (stick1.getRawButton(buttonReleaseID) ? -1 : 0), 0);
+	  
+	  lock.set(stick1.getRawButton(buttonLockID) ? DoubleSolenoid.Value.kReverse : DoubleSolenoid.Value.kForward);
 	  transmission.set(stick.getRawButton(buttonTransmissionID) ? DoubleSolenoid.Value.kForward : DoubleSolenoid.Value.kReverse);
 	}
 	
