@@ -67,12 +67,14 @@ public class Robot extends IterativeRobot {
 	@Override
 	public void robotInit() {
 	  chooser = new SendableChooser<String>();
-	  chooser.addDefault("Center", "C");
-    chooser.addObject("Left", "L");
-    chooser.addObject("Right", "R");
-    SmartDashboard.putData("Autonomouse Position", chooser);
+	  // chooser.addDefault("Center", "C");
+      // chooser.addObject("Left", "L");
+      // chooser.addObject("Right", "R");
+      chooser.addObject("Drive Forward (L/R only)", "d");
+      chooser.addObject("Do Switch (C only)", "s");
+      SmartDashboard.putData("Autonomouse", chooser);
     
-    autoTimer = new Timer();
+      autoTimer = new Timer();
 	  
 	  stick = new Joystick(stickID);
 	  stick1 = new Joystick(stick1ID);
@@ -130,47 +132,84 @@ public class Robot extends IterativeRobot {
 	 */
 	@Override
 	public void autonomousPeriodic() {
-	  
-	  
-	  
-	  switch (selectedAuto) {
-      case "R":
-        
-        switch (gameData.charAt(0)) {
-          case 'L':
-            // No fuck that, just drive forwards
-            if (autoTimer.get() < 2) {
-              drive.arcadeDrive(1, 0);
-            }
-            break;
-            
-          case 'R':
-            break;
+
+	  int time = autoTimer.get();
+
+      if (selectedAuto == "d") { // drive to auto line
+      
+        // No fuck that, just drive forwards
+        if (autoTimer.get() < 5) { // For 3 seconds, drive forward (make sure to check timings and to make sure drive train doesn't curve)
+          drive.arcadeDrive(0.5, 0);
+        } else {
+          drive.arcadeDrive(0, 0);
         }
         
-        break;
-      case "C":
-        
-        break;
-      case "L":
-        
-        switch (gameData.charAt(0)) {
-          case 'L':
-            break;
-            
-          case 'R':
-            // No fuck that, just drive forwards
-            drive.arcadeDrive(1, 0);
-            Timer.delay(5000);
-            drive.arcadeDrive(0, 0);
-            break;
+      } else if (selectedAuto == "s") { // do actual auto
+      
+        /* 
+         * Lower cube picker - async 1s - 0-1s
+         * Lower first rail - async 1s - 0-1s
+         * Drive forward - 2s - 0-2
+         * Intake motors inwards - 1s - 2-3s
+         * Raise rail - 1s - 3-4s
+         * Turn left/right - 0.5s - 4-4.5s
+         * Drive forward - 2s - 4.5-6.5s
+         * Turn to face switch - 0.5s - 6.5-7s
+         * Intake motors outwards - 1s - 7-8s
+         *
+         * Reset all outputs execpt drive, winch & grab every tick
+         */
+
+        if (autoTimer.get() < 1) {
+          winch.arcadeDrive(-0.5, 0);
+          // insert servo/other motor to lower picker
         }
+
+        if (autoTimer.get() < 2) {
+          drive.arcadeDrive(0.5, 0);
+          grab.arcadeDrive(0, 0);
+        }
+
+        if (autoTimer.get() > 2 && autoTimer.get() < 3) {
+          grab.arcadeDrive(1, 0);
+          drive.arcadeDrive(0, 0);
+          winch.arcadeDrive(0, 0);
+        }
+
+        if (autoTimer.get() > 3 && autoTimer.get() < 4) {
+          grab.arcadeDrive(0, 0);
+          drive.arcadeDrive(0, 0);
+          winch.arcadeDrive(-0.5, 0);
+        }
+
+        if (autoTimer.get() > 4 && autoTimer.get() < 4.5) {
+          grab.arcadeDrive(0, 0);
+          drive.arcadeDrive(0.5, gameData.charAt(0) == 'L' ? -1 : 1);
+          winch.arcadeDrive(0, 0);
+        }
+
+        if (autoTimer.get() > 4.5 && autoTimer.get() < 6.5) {
+	      grab.arcadeDrive(0, 0);
+	      drive.arcadeDrive(0.5, 0);
+	      winch.arcadeDrive(0, 0);
+	    }	
+
+        if (autoTimer.get() > 6.5 && autoTimer.get() < 7) {
+          grab.arcadeDrive(0, 0);
+          drive.arcadeDrive(0.5, gameData.charAt(0) == 'L' ? 1 : -1);
+          winch.arcadeDrive(0, 0);
+        }
+
+        if (autoTimer.get() > 7 && autoTimer.get() < 8) {
+          grab.arcadeDrive(-1, 0);
+          drive.arcadeDrive(0, 0);
+          winch.arcadeDrive(0, 0);
+        }
+
+        winch1.arcadeDrive(0, 0);
         
-        break;
-      default:
-        
-        break;
-    }
+      	
+      }
 	  
 	}
 
