@@ -7,11 +7,13 @@
 
 package org.usfirst.frc.team1482.robot;
 
+import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
 
 import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.GenericHID.RumbleType;
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.SpeedControllerGroup;
@@ -21,6 +23,8 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.Timer;
 
 import java.lang.String;
+
+//import org.usfirst.frc.team1482.robot.PlaybackAuto;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -44,6 +48,7 @@ public class Robot extends IterativeRobot {
   int buttonTransmissionID = 1; // 1, a button
   
   SendableChooser<String> chooser;
+  SendableChooser<Double> motorChooser;
   Timer autoTimer;
   
   String selectedAuto;
@@ -59,6 +64,9 @@ public class Robot extends IterativeRobot {
   
   DoubleSolenoid lock;
   DoubleSolenoid transmission;
+  
+  char SelectedAuto;
+  String GameData;
 
 	/**
 	 * This function is run when the Robot is first started up and should be
@@ -70,9 +78,11 @@ public class Robot extends IterativeRobot {
 	  // chooser.addDefault("Center", "C");
       // chooser.addObject("Left", "L");
       // chooser.addObject("Right", "R");
-      chooser.addObject("Drive Forward (L/R only)", "d");
+      chooser.addDefault("Drive Forward (L/R only)", "d");
       chooser.addObject("Do Switch (C only)", "s");
-      SmartDashboard.putData("Autonomouse", chooser);
+      chooser.addObject("Sit still (all positions)", "n");
+      chooser.addObject("Play recording", "r");
+      SmartDashboard.putData("Autonomous", chooser);
     
       autoTimer = new Timer();
 	  
@@ -88,6 +98,13 @@ public class Robot extends IterativeRobot {
 	  WPI_TalonSRX motorGrab = new WPI_TalonSRX(6);
 	  WPI_TalonSRX motorGrab1 = new WPI_TalonSRX(7);
 	  
+	  /*
+	  motorRight.configPeakOutputForward(0.75, 0);
+	  motorRight.configPeakOutputReverse(-0.75, 0);
+	  motorRight1.configPeakOutputForward(0.75, 0);
+	  motorRight1.configPeakOutputReverse(-0.75, 0);
+	  */
+	  
 	  SpeedControllerGroup railLeft = new SpeedControllerGroup(motorLeft, motorLeft1);
 	  SpeedControllerGroup railRight = new SpeedControllerGroup(motorRight, motorRight1);
 	  
@@ -99,12 +116,10 @@ public class Robot extends IterativeRobot {
 	  winch1 = new DifferentialDrive(motorWinch1, motorWinch1);
 	  grab = new DifferentialDrive(motorGrab, motorGrab1);
 	  
-	  lock = new DoubleSolenoid(2, 3);
+	  //lock = new DoubleSolenoid(2, 3);
 	  transmission = new DoubleSolenoid(0, 1);
 	  
 	  CameraServer.getInstance().startAutomaticCapture();
-	  
-	  
 	}
 
 	/**
@@ -125,6 +140,8 @@ public class Robot extends IterativeRobot {
 	  
 	  autoTimer.reset();
 	  autoTimer.start();
+	  
+	  timePlayback = 0;
 	}
 
 	/**
@@ -132,14 +149,13 @@ public class Robot extends IterativeRobot {
 	 */
 	@Override
 	public void autonomousPeriodic() {
-
-	  int time = autoTimer.get();
+	  System.out.println("Selected: " + selectedAuto);
 
       if (selectedAuto == "d") { // drive to auto line
       
         // No fuck that, just drive forwards
-        if (autoTimer.get() < 5) { // For 3 seconds, drive forward (make sure to check timings and to make sure drive train doesn't curve)
-          drive.arcadeDrive(0.5, 0);
+        if (autoTimer.get() < 7) { // For 3 seconds, drive forward (make sure to check timings and to make sure drive train doesn't curve)
+          drive.arcadeDrive(-0.5, 0);
         } else {
           drive.arcadeDrive(0, 0);
         }
@@ -160,12 +176,12 @@ public class Robot extends IterativeRobot {
          * Reset all outputs execpt drive, winch & grab every tick
          */
 
-        if (autoTimer.get() < 1) {
+        /*if (autoTimer.get() < 1) {
           winch.arcadeDrive(-0.5, 0);
           // insert servo/other motor to lower picker
-        }
-
-        if (autoTimer.get() < 2) {
+        }*/
+        
+        /*if (autoTimer.get() < 2) {
           drive.arcadeDrive(0.5, 0);
           grab.arcadeDrive(0, 0);
         }
@@ -206,9 +222,16 @@ public class Robot extends IterativeRobot {
           winch.arcadeDrive(0, 0);
         }
 
-        winch1.arcadeDrive(0, 0);
+        winch1.arcadeDrive(0, 0);*/
         
-      	
+      } else if (selectedAuto == "r") {// use recording
+        
+        drive.arcadeDrive(recording.getAxis(timePlayback, axisThrottleID), -recording.getAxis(timePlayback, axisSteerID));
+        timePlayback++;
+        
+      // Okay fuck that further, because we can't drive forwards, so do nothing.
+      } else {
+    	
       }
 	  
 	}
@@ -218,25 +241,64 @@ public class Robot extends IterativeRobot {
 	 */
 	@Override
 	public void teleopPeriodic() {
-	  drive.arcadeDrive(stick.getRawAxis(axisThrottleID), -stick.getRawAxis(axisSteerID));
-	  winch.arcadeDrive(stick1.getRawAxis(axisRaiseID), 0);
+		drive.arcadeDrive(stick.getRawAxis(axisThrottleID), -stick.getRawAxis(axisSteerID));
+		winch.arcadeDrive(stick1.getRawAxis(axisRaiseID) * 0.6, 0);
 	  
+		grab.arcadeDrive(stick1.getRawButton(buttonGrabID) ? 0.85 : (stick1.getRawButton(buttonReleaseID) ? -0.85 : 0), 0);
+	  
+		transmission.set(stick.getRawButton(buttonTransmissionID) ? DoubleSolenoid.Value.kForward : DoubleSolenoid.Value.kReverse);
+	  
+	  /*
+	   * Climber broke
 	  if (stick1.getRawButton(buttonLockID)) {
-      winch1.arcadeDrive(stick1.getRawAxis(axisRaise1ID), 0);
+        winch1.arcadeDrive(stick1.getRawAxis(axisRaise1ID), 0);
+        lock.set(DoubleSolenoid.Value.kForward);
 	  } else {
 	    winch1.arcadeDrive(0, 0);
+	    lock.set(DoubleSolenoid.Value.kReverse);
 	  }
 	  
-	  grab.arcadeDrive(stick1.getRawButton(buttonGrabID) ? 1 : (stick1.getRawButton(buttonReleaseID) ? -1 : 0), 0);
-	  
-	  lock.set(stick1.getRawButton(buttonLockID) ? DoubleSolenoid.Value.kReverse : DoubleSolenoid.Value.kForward);
-	  transmission.set(stick.getRawButton(buttonTransmissionID) ? DoubleSolenoid.Value.kForward : DoubleSolenoid.Value.kReverse);
+	  lock.set(stick1.getRawButton(buttonLockID) ? DoubleSolenoid.Value.kForward : DoubleSolenoid.Value.kReverse);
+	  */
 	}
+	
+	PlaybackAuto recording = new PlaybackAuto("/home/lvuser/timeline");
+	int timePlayback = 0;
+	
+	/**
+     * This function is called periodically during test mode.
+     */
+    @Override
+    public void testInit() {
+//      autoTimer.reset();
+//      autoTimer.start();
+      
+      // recording.RecordInit("/home/lvuser/timeline"); // lvuser is the user used to execute the jars on the rio
+      timePlayback = 0;
+    }
 	
 	
 	/**
 	 * This function is called periodically during test mode.
 	 */
 	@Override
-	public void testPeriodic() {}
+	public void testPeriodic() {
+	  stick.setRumble(RumbleType.kLeftRumble, stick.getRawButton(1) ? 1 : 0);
+	  stick.setRumble(RumbleType.kRightRumble, stick.getRawButton(2) ? 1 : 0);
+	  
+	  recording.recordFrame(timePlayback, stick);
+	  timePlayback++;
+	  
+	  /*
+	   * POV Layout
+	   * 315   0  45
+	   * 270  -1  90
+	   * 225 180 135
+	   */
+
+      if (stick.getPOV(0) == 0) { // POV up
+        recording.recordStop();
+        throw new Error("Disabling robot... (with an error)");
+      }
+	}
 }
