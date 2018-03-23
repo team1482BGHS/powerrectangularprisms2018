@@ -22,8 +22,10 @@ class PlaybackAuto {
   // private Map<Integer, List<Double>> timeline; // {20: [1,2,3,4]}
   private BufferedWriter writer;
   private BufferedReader reader;
+  private String filename;
   
-  public PlaybackAuto(String filename) {
+  public PlaybackAuto(String fileInput) {
+    filename = fileInput;
     try {
       writer = new BufferedWriter(new FileWriter(new File(filename)));
       reader = new BufferedReader(new FileReader(new File(filename)));
@@ -33,8 +35,9 @@ class PlaybackAuto {
     }
   }
   
-  public void startRecord(String filename) {
+  public void startRecord() {
     try {
+      writer.close();
       writer = new BufferedWriter(new FileWriter(new File(filename)));
     } catch (IOException e) {
       // TODO Auto-generated catch block
@@ -98,10 +101,11 @@ class PlaybackAuto {
     }
   }
   
-  public void start(String filename) {
+  public void start() {
     try {
+      reader.close();
       reader = new BufferedReader(new FileReader(new File(filename)));
-    } catch (FileNotFoundException e) {
+    } catch (IOException e) {
       // TODO Auto-generated catch block
       e.printStackTrace();
     }
@@ -120,9 +124,11 @@ class PlaybackAuto {
         line = reader.readLine();
       
         if (line == null) {
-          throw new Error("EOF");
+          return false;
         }
         
+        System.out.println(line.substring(0, Integer.toString(time).length()));
+        System.out.println(Integer.toString(time));
         if (line.substring(0, Integer.toString(time).length()) == Integer.toString(time)) { // Check if we're on the right line
           int offset = Integer.toString(time).length() + 1 + button; // Locate the string offset
           return (line.substring(offset, offset + 1) == "1");
@@ -134,7 +140,7 @@ class PlaybackAuto {
     }
   }
   
-  /*
+  /* Integer.toString(time)
    * getButton
    * int time - current time frame
    * int button - button id (starting at 1)

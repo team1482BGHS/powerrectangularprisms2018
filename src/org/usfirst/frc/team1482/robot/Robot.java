@@ -89,7 +89,7 @@ public class Robot extends IterativeRobot {
 	  stick = new Joystick(stickID);
 	  stick1 = new Joystick(stick1ID);
 	  
-	  WPI_TalonSRX motorLeft = new WPI_TalonSRX(0);
+	  /*WPI_TalonSRX motorLeft = new WPI_TalonSRX(0);
 	  WPI_TalonSRX motorLeft1 = new WPI_TalonSRX(1);
 	  WPI_TalonSRX motorRight = new WPI_TalonSRX(2);
 	  WPI_TalonSRX motorRight1 = new WPI_TalonSRX(3);
@@ -97,13 +97,6 @@ public class Robot extends IterativeRobot {
 	  WPI_TalonSRX motorWinch1 = new WPI_TalonSRX(5);
 	  WPI_TalonSRX motorGrab = new WPI_TalonSRX(6);
 	  WPI_TalonSRX motorGrab1 = new WPI_TalonSRX(7);
-	  
-	  /*
-	  motorRight.configPeakOutputForward(0.75, 0);
-	  motorRight.configPeakOutputReverse(-0.75, 0);
-	  motorRight1.configPeakOutputForward(0.75, 0);
-	  motorRight1.configPeakOutputReverse(-0.75, 0);
-	  */
 	  
 	  SpeedControllerGroup railLeft = new SpeedControllerGroup(motorLeft, motorLeft1);
 	  SpeedControllerGroup railRight = new SpeedControllerGroup(motorRight, motorRight1);
@@ -119,7 +112,7 @@ public class Robot extends IterativeRobot {
 	  //lock = new DoubleSolenoid(2, 3);
 	  transmission = new DoubleSolenoid(0, 1);
 	  
-	  CameraServer.getInstance().startAutomaticCapture();
+	  CameraServer.getInstance().startAutomaticCapture();*/
 	}
 
 	/**
@@ -142,6 +135,8 @@ public class Robot extends IterativeRobot {
 	  autoTimer.start();
 	  
 	  timePlayback = 0;
+	  
+	  recording.start();
 	}
 
 	/**
@@ -149,7 +144,7 @@ public class Robot extends IterativeRobot {
 	 */
 	@Override
 	public void autonomousPeriodic() {
-	  System.out.println("Selected: " + selectedAuto);
+	  // System.out.println("Selected: " + selectedAuto);
 
       if (selectedAuto == "d") { // drive to auto line
       
@@ -226,7 +221,12 @@ public class Robot extends IterativeRobot {
         
       } else if (selectedAuto == "r") {// use recording
         
-        drive.arcadeDrive(recording.getAxis(timePlayback, axisThrottleID), -recording.getAxis(timePlayback, axisSteerID));
+        //drive.arcadeDrive(recording.getAxis(timePlayback, axisThrottleID), -recording.getAxis(timePlayback, axisSteerID));
+        try {
+          System.out.println(recording.getButton(timePlayback, 1) ? 1 : 0); // a
+        } finally {
+          
+        }
         timePlayback++;
         
       // Okay fuck that further, because we can't drive forwards, so do nothing.
@@ -275,6 +275,7 @@ public class Robot extends IterativeRobot {
       
       // recording.RecordInit("/home/lvuser/timeline"); // lvuser is the user used to execute the jars on the rio
       timePlayback = 0;
+      recording.startRecord();
     }
 	
 	
@@ -298,7 +299,7 @@ public class Robot extends IterativeRobot {
 
       if (stick.getPOV(0) == 0) { // POV up
         recording.recordStop();
-        throw new Error("Disabling robot... (with an error)");
+        //throw new Error("Disabling robot... (with an error)");
       }
 	}
 }
