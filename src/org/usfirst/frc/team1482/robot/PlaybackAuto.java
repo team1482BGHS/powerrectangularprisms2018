@@ -1,176 +1,105 @@
 package org.usfirst.frc.team1482.robot;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
 import edu.wpi.first.wpilibj.Joystick;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.regex.Pattern;
+import java.util.List;
+
 class PlaybackAuto {
-  // 10 buttons, 6 axiseses
-  // private Map<Integer, List<Double>> timeline; // {20: [1,2,3,4]}
-  private BufferedWriter writer;
-  private BufferedReader reader;
   private String filename;
   
   public PlaybackAuto(String fileInput) {
     filename = fileInput;
-    try {
-      writer = new BufferedWriter(new FileWriter(new File(filename)));
-      reader = new BufferedReader(new FileReader(new File(filename)));
-    } catch (IOException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
-    }
   }
   
-  public void startRecord() {
-    try {
-      writer.close();
-      writer = new BufferedWriter(new FileWriter(new File(filename)));
-    } catch (IOException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
-    }
+  /*
+   * Initalize the recording by clearing the file.
+   * @throws IOException Thrown on file write error.
+   */
+  public void startRecord() throws IOException {
+    Files.write(Paths.get(filename), "".getBytes());
   }
   
-  public void recordFrame(int time, Joystick stick) {
+  /*
+   * Record a time frame of controller inputs into a file.
+   * @param time The time frame to record to, starting at zero, incrementing by one.
+   * @param stick The Joystick to record from.
+   * @throws IOException Thrown on file write error.
+   */
+  public void recordFrame(int time, Joystick stick) throws IOException {
     /*
      * Format:
      * [time]:[button...]:[[axis],[axis]...]\n
      */
+     
+     String line = "";
     
-    try {
-      writer.write(Integer.toString(time) + ":");
-    } catch (IOException e1) {
-      // TODO Auto-generated catch block
-      e1.printStackTrace();
-    }
+     line += Integer.toString(time) + ":";
     
     for (int i = 1; i <= stick.getButtonCount(); i++) {
-      try {
-        writer.write(stick.getRawButton(i) ? "1" : "0");
-      } catch (IOException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      }
+      line += stick.getRawButton(i) ? "1" : "0";
     }
     
-    try {
-      writer.write(":");
-    } catch (IOException e1) {
-      // TODO Auto-generated catch block
-      e1.printStackTrace();
-    }
+    line += ":";
     
     for (int i = 0; i < stick.getAxisCount(); i++) {
-      try {
-        writer.write(Double.toString(stick.getRawAxis(i)) + ",");
-      } catch (IOException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      }
+      line += Double.toString(stick.getRawAxis(i)) + (i >= stick.getAxisCount() - 1 ? "" : ",");
     }
 
-    try {
-      writer.write("\n");
-    } catch (IOException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
-    }
+    line += "\n";
     
+    Files.write(Paths.get(filename), line.getBytes(), StandardOpenOption.APPEND);
   }
   
-  public void recordStop() {
-    try {
-      writer.close();
-    } catch (IOException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
-    }
-  }
-  
-  public void start() {
-    try {
-      reader.close();
-      reader = new BufferedReader(new FileReader(new File(filename)));
-    } catch (IOException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
+  /*
+   * Get a pre-recorded button press at a time frame.
+   * @param time The time frame to use.
+   * @param button The button id, starting at zero, to check for.
+   * @return boolean Whether the recording had the button pressed.
+   * @throws IOException Thrown on file read error.
+   * @throws IndexOutOfBoundsException Thrown if time is bigger than recording length or for an invalid button id.
+   */
+  public boolean getButton(int time, int button) throws IOException, IndexOutOfBoundsException {
+    List<String> lines = Files.readAllLines(Paths.get(filename));
+    String line = lines.get(time);
+    
+    Pattern segmentSplit = Pattern.compile(":");
+    String[] segments = segmentSplit.split(line, 0); // [time, buttons, axises]; throws IndexOutOfBoundsException with invalid line
+    
+    if (Integer.parseInt(segments[0]) == time) {
+      return segments[1].substring(button, button + 1).equals("1"); // throws IndexOutOfBoundsException with invalid button
+    } else {
+      throw new IndexOutOfBoundsException(); // throws IndexOutOfBoundsException with invalid line
     }
   }
   
   /*
-   * getButton
-   * int time - current time frame
-   * int button - button id (starting at 1)
-   * boolean @return - true if pressed false if not
+   * Get a pre-recorded axis position at a time frame.
+   * @param time The time frame to use.
+   * @param button The axis id, starting at one, to check for.
+   * @return double The axis position on the recording.
+   * @throws IOException Thrown on file read error.
+   * @throws IndexOutOfBoundsException Thrown if time is bigger than recording length.
    */
-  public boolean getButton(int time, int button) {
-    String line;
-    while (true) {
-      try {
-        line = reader.readLine();
+  public double getAxis(int time, int axis) throws IOException, IndexOutOfBoundsException {
+    List<String> lines = Files.readAllLines(Paths.get(filename));
+    String line = lines.get(time);
+    
+    Pattern segmentSplit = Pattern.compile(":");
+    String[] segments = segmentSplit.split(line, 0); // [time, buttons, axises]; throws IndexOutOfBoundsException with invalid line
+    
+    if (Integer.parseInt(segments[0]) == time) {
+      Pattern axisesSplit = Pattern.compile(",");
       
-        if (line == null) {
-          return false;
-        }
-        
-        System.out.println(line.substring(0, Integer.toString(time).length()));
-        System.out.println(Integer.toString(time));
-        if (line.substring(0, Integer.toString(time).length()) == Integer.toString(time)) { // Check if we're on the right line
-          int offset = Integer.toString(time).length() + 1 + button; // Locate the string offset
-          return (line.substring(offset, offset + 1) == "1");
-        }
-      } catch (IOException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      }
-    }
-  }
-  
-  /* Integer.toString(time)
-   * getButton
-   * int time - current time frame
-   * int button - button id (starting at 1)
-   * boolean @return - true if pressed false if not
-   */
-  public double getAxis(int time, int axis) {
-    String line;
-    while (true) {
-      try {
-        line = reader.readLine();
+      String[] axises = axisesSplit.split(segments[2], 0);
       
-        if (line == null) {
-          throw new Error("EOF");
-        }
-        
-        System.out.println(line);
-        
-        if (line.substring(0, Integer.toString(time).length()) == Integer.toString(time)) { // Check if we're on the right line
-          int offset = Integer.toString(time).length() + 1; // Default to after [time]:
-          offset += line.substring(offset).indexOf(":") + 1; // Set the offset to where the axises start
-          for (int i = 0; i < axis; i++) {
-            offset += line.substring(offset).indexOf(",") + 1;
-          }
-          
-          return Double.parseDouble(line.substring(offset, line.substring(offset).indexOf(",")));
-        }
-      } catch (IOException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      }
+      return Double.parseDouble(axises[axis + 1]); // throws IndexOutOfBoundsException with invalid button
+    } else {
+      throw new IndexOutOfBoundsException(); // throws IndexOutOfBoundsException with invalid line
     }
   }
 }
