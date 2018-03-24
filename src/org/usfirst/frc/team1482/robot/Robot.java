@@ -24,8 +24,6 @@ import edu.wpi.first.wpilibj.Timer;
 
 import java.lang.String;
 
-//import org.usfirst.frc.team1482.robot.PlaybackAuto;
-
 /**
  * The VM is configured to automatically run this class, and to call the
  * functions corresponding to each mode, as described in the IterativeRobot
@@ -67,84 +65,97 @@ public class Robot extends IterativeRobot {
   
   char SelectedAuto;
   String GameData;
+  
+  PlaybackAuto recording1; // for joystick 1
+  PlaybackAuto recording2; // for joystick 2
+  int recordingTime = 0;
+  
+  /**
+   * This function is run when the Robot is first started up and should be
+   * used for any initialization code.
+   */
+  @Override
+  public void robotInit() {
+    chooser = new SendableChooser<String>();
+    // chooser.addDefault("Center", "C");
+    // chooser.addObject("Left", "L");
+    // chooser.addObject("Right", "R");
+    chooser.addDefault("Drive Forward (L/R only)", "d");
+    // chooser.addObject("Do Switch (C only)", "s");
+    chooser.addObject("Sit Still (all positions)", "n");
+    chooser.addObject("Play Recording (all positions)", "r");
+    chooser.addObject("Overwrite Recording (test mode only)", "R");
+    SmartDashboard.putData("Autonomous", chooser);
 
-	/**
-	 * This function is run when the Robot is first started up and should be
-	 * used for any initialization code.
-	 */
-	@Override
-	public void robotInit() {
-	  chooser = new SendableChooser<String>();
-	  // chooser.addDefault("Center", "C");
-      // chooser.addObject("Left", "L");
-      // chooser.addObject("Right", "R");
-      chooser.addDefault("Drive Forward (L/R only)", "d");
-      chooser.addObject("Do Switch (C only)", "s");
-      chooser.addObject("Sit still (all positions)", "n");
-      chooser.addObject("Play recording", "r");
-      SmartDashboard.putData("Autonomous", chooser);
+    autoTimer = new Timer();
+
+    stick = new Joystick(stickID);
+    stick1 = new Joystick(stick1ID);
     
-      autoTimer = new Timer();
-	  
-	  stick = new Joystick(stickID);
-	  stick1 = new Joystick(stick1ID);
-	  
-	  /*WPI_TalonSRX motorLeft = new WPI_TalonSRX(0);
-	  WPI_TalonSRX motorLeft1 = new WPI_TalonSRX(1);
-	  WPI_TalonSRX motorRight = new WPI_TalonSRX(2);
-	  WPI_TalonSRX motorRight1 = new WPI_TalonSRX(3);
-	  WPI_TalonSRX motorWinch = new WPI_TalonSRX(4);
-	  WPI_TalonSRX motorWinch1 = new WPI_TalonSRX(5);
-	  WPI_TalonSRX motorGrab = new WPI_TalonSRX(6);
-	  WPI_TalonSRX motorGrab1 = new WPI_TalonSRX(7);
-	  
-	  SpeedControllerGroup railLeft = new SpeedControllerGroup(motorLeft, motorLeft1);
-	  SpeedControllerGroup railRight = new SpeedControllerGroup(motorRight, motorRight1);
-	  
-	  // railLeft.setInverted(true);
-	  // railRight.setInverted(true);
-	  
-	  drive = new DifferentialDrive(railLeft, railRight);
-	  winch = new DifferentialDrive(motorWinch, motorWinch);
-	  winch1 = new DifferentialDrive(motorWinch1, motorWinch1);
-	  grab = new DifferentialDrive(motorGrab, motorGrab1);
-	  
-	  //lock = new DoubleSolenoid(2, 3);
-	  transmission = new DoubleSolenoid(0, 1);
-	  
-	  CameraServer.getInstance().startAutomaticCapture();*/
+    WPI_TalonSRX motorLeft = new WPI_TalonSRX(0);
+    WPI_TalonSRX motorLeft1 = new WPI_TalonSRX(1);
+    WPI_TalonSRX motorRight = new WPI_TalonSRX(2);
+    WPI_TalonSRX motorRight1 = new WPI_TalonSRX(3);
+    WPI_TalonSRX motorWinch = new WPI_TalonSRX(4);
+    WPI_TalonSRX motorWinch1 = new WPI_TalonSRX(5);
+    WPI_TalonSRX motorGrab = new WPI_TalonSRX(6);
+    WPI_TalonSRX motorGrab1 = new WPI_TalonSRX(7);
+    
+    SpeedControllerGroup railLeft = new SpeedControllerGroup(motorLeft, motorLeft1);
+    SpeedControllerGroup railRight = new SpeedControllerGroup(motorRight, motorRight1);
+    
+    // railLeft.setInverted(true);
+    // railRight.setInverted(true);
+    
+    drive = new DifferentialDrive(railLeft, railRight);
+    winch = new DifferentialDrive(motorWinch, motorWinch);
+    winch1 = new DifferentialDrive(motorWinch1, motorWinch1);
+    grab = new DifferentialDrive(motorGrab, motorGrab1);
+    
+    //lock = new DoubleSolenoid(2, 3);
+    transmission = new DoubleSolenoid(0, 1);
+    
+    CameraServer.getInstance().startAutomaticCapture();
+    
+    try {
+      // MAKE SURE TO BACKUP THESE 2 FILES WITH SSH
+      recording1 = new PlaybackAuto("/home/lvuser/timeline1.dat");
+      recording2 = new PlaybackAuto("/home/lvuser/timeline2.dat");
+    } catch (IOException ex) {
+      ex.printStackTrace();
+      System.out.println("PlaybackAuto failed to start and will not run in match. Restart robot code to try loading again.");
+    }
+    recordingTime = 0;
 	}
 
-	/**
-	 * This autonomous (along with the chooser code above) shows how to select
-	 * between different autonomous modes using the dashboard. The sendable
-	 * chooser code works with the Java SmartDashboard. If you prefer the
-	 * LabVIEW Dashboard, remove all of the chooser code and uncomment the
-	 * getString line to get the auto name from the text box below the Gyro
-	 *
-	 * <p>You can add additional auto modes by adding additional comparisons to
-	 * the switch structure below with additional strings. If using the
-	 * SendableChooser make sure to add them to the chooser code above as well.
-	 */
-	@Override
-	public void autonomousInit() {
-	  selectedAuto = chooser.getSelected(); // R(ight) C(enter) or L(eft)
-	  gameData = DriverStation.getInstance().getGameSpecificMessage(); // LRL or RLR or LLL etc.
-	  
-	  autoTimer.reset();
-	  autoTimer.start();
-	  
-	  timePlayback = 0;
-	  
-	  recording.start();
-	}
+  /**
+   * This autonomous (along with the chooser code above) shows how to select
+   * between different autonomous modes using the dashboard. The sendable
+   * chooser code works with the Java SmartDashboard. If you prefer the
+   * LabVIEW Dashboard, remove all of the chooser code and uncomment the
+   * getString line to get the auto name from the text box below the Gyro
+   *
+   * <p>You can add additional auto modes by adding additional comparisons to
+   * the switch structure below with additional strings. If using the
+   * SendableChooser make sure to add them to the chooser code above as well.
+   */
+  @Override
+  public void autonomousInit() {
+    selectedAuto = chooser.getSelected(); // R(ight) C(enter) or L(eft)
+    gameData = DriverStation.getInstance().getGameSpecificMessage(); // LRL or RLR or LLL etc.
+    
+    autoTimer.reset();
+    autoTimer.start();
+    
+    timePlayback = 0;
+  }
 
-	/**
-	 * This function is called periodically during autonomous.
-	 */
-	@Override
-	public void autonomousPeriodic() {
-	  // System.out.println("Selected: " + selectedAuto);
+  /**
+   * This function is called periodically during autonomous.
+   */
+  @Override
+  public void autonomousPeriodic() {
+    // System.out.println("Selected: " + selectedAuto);
 
       if (selectedAuto == "d") { // drive to auto line
       
@@ -200,10 +211,10 @@ public class Robot extends IterativeRobot {
         }
 
         if (autoTimer.get() > 4.5 && autoTimer.get() < 6.5) {
-	      grab.arcadeDrive(0, 0);
-	      drive.arcadeDrive(0.5, 0);
-	      winch.arcadeDrive(0, 0);
-	    }	
+          grab.arcadeDrive(0, 0);
+          drive.arcadeDrive(0.5, 0);
+          winch.arcadeDrive(0, 0);
+        }	
 
         if (autoTimer.get() > 6.5 && autoTimer.get() < 7) {
           grab.arcadeDrive(0, 0);
@@ -221,85 +232,91 @@ public class Robot extends IterativeRobot {
         
       } else if (selectedAuto == "r") {// use recording
         
-        //drive.arcadeDrive(recording.getAxis(timePlayback, axisThrottleID), -recording.getAxis(timePlayback, axisSteerID));
-        try {
-          System.out.println(recording.getButton(timePlayback, 1) ? 1 : 0); // a
-        } finally {
-          
-        }
-        timePlayback++;
-        
-      // Okay fuck that further, because we can't drive forwards, so do nothing.
-      } else {
-    	
-      }
-	  
-	}
+        // Yeah I fucking copy and pasted our teleop code.
+        drive.arcadeDrive(recording1.getAxis(recordingTime, axisThrottleID), -recording1.getRawAxis(axisSteerID));
+        winch.arcadeDrive(recording2.getAxis(recordingTime, axisRaiseID), 0);
 
-	/**
-	 * This function is called periodically during operator control.
-	 */
-	@Override
-	public void teleopPeriodic() {
-		drive.arcadeDrive(stick.getRawAxis(axisThrottleID), -stick.getRawAxis(axisSteerID));
-		winch.arcadeDrive(stick1.getRawAxis(axisRaiseID) * 0.6, 0);
-	  
-		grab.arcadeDrive(stick1.getRawButton(buttonGrabID) ? 0.85 : (stick1.getRawButton(buttonReleaseID) ? -0.85 : 0), 0);
-	  
-		transmission.set(stick.getRawButton(buttonTransmissionID) ? DoubleSolenoid.Value.kForward : DoubleSolenoid.Value.kReverse);
-	  
-	  /*
-	   * Climber broke
-	  if (stick1.getRawButton(buttonLockID)) {
+        grab.arcadeDrive(recording2.getButton(recordingTime, buttonGrabID) ? 0.85 : (recording2.getButton(recordingTime, buttonReleaseID) ? -0.85 : 0), 0);
+
+        transmission.set(recording1.getButton(recordingTime, buttonTransmissionID) ? DoubleSolenoid.Value.kForward : DoubleSolenoid.Value.kReverse);
+        recordingTime++;
+      
+      } else {
+        // Okay fuck that further, because we can't even drive forwards, so do nothing.
+      }
+    
+  }
+
+  /**
+   * This function is called periodically during operator control.
+   */
+  @Override
+  public void teleopPeriodic() {
+    drive.arcadeDrive(stick.getRawAxis(axisThrottleID), -stick.getRawAxis(axisSteerID));
+    winch.arcadeDrive(stick1.getRawAxis(axisRaiseID) * 0.6, 0);
+    
+    grab.arcadeDrive(stick1.getRawButton(buttonGrabID) ? 0.85 : (stick1.getRawButton(buttonReleaseID) ? -0.85 : 0), 0);
+    
+    transmission.set(stick.getRawButton(buttonTransmissionID) ? DoubleSolenoid.Value.kForward : DoubleSolenoid.Value.kReverse);
+    
+    /*
+     * Climber broke
+    if (stick1.getRawButton(buttonLockID)) {
         winch1.arcadeDrive(stick1.getRawAxis(axisRaise1ID), 0);
         lock.set(DoubleSolenoid.Value.kForward);
-	  } else {
-	    winch1.arcadeDrive(0, 0);
-	    lock.set(DoubleSolenoid.Value.kReverse);
-	  }
-	  
-	  lock.set(stick1.getRawButton(buttonLockID) ? DoubleSolenoid.Value.kForward : DoubleSolenoid.Value.kReverse);
-	  */
-	}
-	
-	PlaybackAuto recording = new PlaybackAuto("/home/lvuser/timeline");
-	int timePlayback = 0;
-	
-	/**
+    } else {
+      winch1.arcadeDrive(0, 0);
+      lock.set(DoubleSolenoid.Value.kReverse);
+    }
+    
+    lock.set(stick1.getRawButton(buttonLockID) ? DoubleSolenoid.Value.kForward : DoubleSolenoid.Value.kReverse);
+    */
+  }
+  
+
+  /**
      * This function is called periodically during test mode.
      */
     @Override
     public void testInit() {
-//      autoTimer.reset();
-//      autoTimer.start();
+      recordingTime = 0;
       
-      // recording.RecordInit("/home/lvuser/timeline"); // lvuser is the user used to execute the jars on the rio
-      timePlayback = 0;
-      recording.startRecord();
-    }
-	
-	
-	/**
-	 * This function is called periodically during test mode.
-	 */
-	@Override
-	public void testPeriodic() {
-	  stick.setRumble(RumbleType.kLeftRumble, stick.getRawButton(1) ? 1 : 0);
-	  stick.setRumble(RumbleType.kRightRumble, stick.getRawButton(2) ? 1 : 0);
-	  
-	  recording.recordFrame(timePlayback, stick);
-	  timePlayback++;
-	  
-	  /*
-	   * POV Layout
-	   * 315   0  45
-	   * 270  -1  90
-	   * 225 180 135
-	   */
-
-      if (stick.getPOV(0) == 0) { // POV up
-        recording.recordStop();
-        //throw new Error("Disabling robot... (with an error)");
+      selectedAuto = chooser.getSelected();
+      
+      if (selectedAuto == "R") {// overwrite recording
+        recording1.startRecord();
+        recording2.startRecord();
+        
+        // IF YOU DON'T GET THIS MESSAGE, SELECT THE OPTION FIRST, THEN SELECT TEST MODE (OR SWITCH MODES)
+        System.out.println("Recording has started for timeline1.dat and timeline2.dat. Disable test mode to stop recording.");
       }
-	}
+    }
+  
+  
+  /**
+   * This function is called periodically during test mode.
+   */
+  @Override
+  public void testPeriodic() {
+    // stick.setRumble(RumbleType.kLeftRumble, stick.getRawButton(1) ? 1 : 0);
+    // stick.setRumble(RumbleType.kRightRumble, stick.getRawButton(2) ? 1 : 0);
+    
+    recording1.recordFrame(recordingTime, stick);
+    recording2.recordFrame(recordingTime, stick1);
+    recordingTime++;
+    
+    drive.arcadeDrive(stick.getRawAxis(axisThrottleID), -stick.getRawAxis(axisSteerID));
+    winch.arcadeDrive(stick1.getRawAxis(axisRaiseID) * 0.6, 0);
+    
+    grab.arcadeDrive(stick1.getRawButton(buttonGrabID) ? 0.85 : (stick1.getRawButton(buttonReleaseID) ? -0.85 : 0), 0);
+    
+    transmission.set(stick.getRawButton(buttonTransmissionID) ? DoubleSolenoid.Value.kForward : DoubleSolenoid.Value.kReverse);
+    
+    /*
+     * POV Layout
+     * 315   0  45
+     * 270  -1  90
+     * 225 180 135
+     */
+  }
 }
