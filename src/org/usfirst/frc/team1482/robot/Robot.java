@@ -23,6 +23,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.Timer;
 
 import java.lang.String;
+import java.io.IOException;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -57,7 +58,7 @@ public class Robot extends IterativeRobot {
   
   DifferentialDrive drive;
   DifferentialDrive winch;
-  DifferentialDrive winch1;
+  // DifferentialDrive winch1;
   DifferentialDrive grab;
   
   DoubleSolenoid lock;
@@ -97,7 +98,7 @@ public class Robot extends IterativeRobot {
     WPI_TalonSRX motorRight = new WPI_TalonSRX(2);
     WPI_TalonSRX motorRight1 = new WPI_TalonSRX(3);
     WPI_TalonSRX motorWinch = new WPI_TalonSRX(4);
-    WPI_TalonSRX motorWinch1 = new WPI_TalonSRX(5);
+    // WPI_TalonSRX motorWinch1 = new WPI_TalonSRX(5);
     WPI_TalonSRX motorGrab = new WPI_TalonSRX(6);
     WPI_TalonSRX motorGrab1 = new WPI_TalonSRX(7);
     
@@ -109,7 +110,7 @@ public class Robot extends IterativeRobot {
     
     drive = new DifferentialDrive(railLeft, railRight);
     winch = new DifferentialDrive(motorWinch, motorWinch);
-    winch1 = new DifferentialDrive(motorWinch1, motorWinch1);
+    // winch1 = new DifferentialDrive(motorWinch1, motorWinch1);
     grab = new DifferentialDrive(motorGrab, motorGrab1);
     
     //lock = new DoubleSolenoid(2, 3);
@@ -117,14 +118,8 @@ public class Robot extends IterativeRobot {
     
     CameraServer.getInstance().startAutomaticCapture();
     
-    try {
-      // MAKE SURE TO BACKUP THESE 2 FILES WITH SSH
-      recording1 = new PlaybackAuto("/home/lvuser/timeline1.dat");
-      recording2 = new PlaybackAuto("/home/lvuser/timeline2.dat");
-    } catch (IOException ex) {
-      ex.printStackTrace();
-      System.out.println("PlaybackAuto failed to start and will not run in match. Restart robot code to try loading again.");
-    }
+    recording1 = new PlaybackAuto("/home/lvuser/timeline1.dat");
+    recording2 = new PlaybackAuto("/home/lvuser/timeline2.dat");
     recordingTime = 0;
 	}
 
@@ -147,7 +142,7 @@ public class Robot extends IterativeRobot {
     autoTimer.reset();
     autoTimer.start();
     
-    timePlayback = 0;
+    recordingTime = 0;
   }
 
   /**
@@ -233,13 +228,20 @@ public class Robot extends IterativeRobot {
       } else if (selectedAuto == "r") {// use recording
         
         // Yeah I fucking copy and pasted our teleop code.
-        drive.arcadeDrive(recording1.getAxis(recordingTime, axisThrottleID), -recording1.getRawAxis(axisSteerID));
-        winch.arcadeDrive(recording2.getAxis(recordingTime, axisRaiseID), 0);
-
-        grab.arcadeDrive(recording2.getButton(recordingTime, buttonGrabID) ? 0.85 : (recording2.getButton(recordingTime, buttonReleaseID) ? -0.85 : 0), 0);
-
-        transmission.set(recording1.getButton(recordingTime, buttonTransmissionID) ? DoubleSolenoid.Value.kForward : DoubleSolenoid.Value.kReverse);
+        try {
+          drive.arcadeDrive(recording1.getAxis(recordingTime, axisThrottleID), -recording1.getAxis(recordingTime, axisSteerID));
+          winch.arcadeDrive(recording2.getAxis(recordingTime, axisRaiseID) * 0.75, 0);
+          System.out.println(recording2.getAxis(recordingTime, axisRaiseID));
+  
+          grab.arcadeDrive(recording2.getButton(recordingTime, buttonGrabID) ? 0.85 : (recording2.getButton(recordingTime, buttonReleaseID) ? -0.85 : 0), 0);
+  
+          transmission.set(recording1.getButton(recordingTime, buttonTransmissionID) ? DoubleSolenoid.Value.kForward : DoubleSolenoid.Value.kReverse);
+        } catch (IndexOutOfBoundsException | IOException ex) {
+          ex.printStackTrace();
+        }
         recordingTime++;
+        
+        Timer.delay(0.02); // 5 ms
       
       } else {
         // Okay fuck that further, because we can't even drive forwards, so do nothing.
@@ -253,7 +255,7 @@ public class Robot extends IterativeRobot {
   @Override
   public void teleopPeriodic() {
     drive.arcadeDrive(stick.getRawAxis(axisThrottleID), -stick.getRawAxis(axisSteerID));
-    winch.arcadeDrive(stick1.getRawAxis(axisRaiseID) * 0.6, 0);
+    winch.arcadeDrive(stick1.getRawAxis(axisRaiseID) * 0.75, 0);
     
     grab.arcadeDrive(stick1.getRawButton(buttonGrabID) ? 0.85 : (stick1.getRawButton(buttonReleaseID) ? -0.85 : 0), 0);
     
@@ -284,8 +286,13 @@ public class Robot extends IterativeRobot {
       selectedAuto = chooser.getSelected();
       
       if (selectedAuto == "R") {// overwrite recording
-        recording1.startRecord();
-        recording2.startRecord();
+        try {
+          recording1.startRecord();
+          recording2.startRecord();
+        } catch (IOException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
         
         // IF YOU DON'T GET THIS MESSAGE, SELECT THE OPTION FIRST, THEN SELECT TEST MODE (OR SWITCH MODES)
         System.out.println("Recording has started for timeline1.dat and timeline2.dat. Disable test mode to stop recording.");
@@ -301,8 +308,13 @@ public class Robot extends IterativeRobot {
     // stick.setRumble(RumbleType.kLeftRumble, stick.getRawButton(1) ? 1 : 0);
     // stick.setRumble(RumbleType.kRightRumble, stick.getRawButton(2) ? 1 : 0);
     
-    recording1.recordFrame(recordingTime, stick);
-    recording2.recordFrame(recordingTime, stick1);
+    try {
+      recording1.recordFrame(recordingTime, stick);
+      recording2.recordFrame(recordingTime, stick1);
+    } catch (IOException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
     recordingTime++;
     
     drive.arcadeDrive(stick.getRawAxis(axisThrottleID), -stick.getRawAxis(axisSteerID));
@@ -311,6 +323,8 @@ public class Robot extends IterativeRobot {
     grab.arcadeDrive(stick1.getRawButton(buttonGrabID) ? 0.85 : (stick1.getRawButton(buttonReleaseID) ? -0.85 : 0), 0);
     
     transmission.set(stick.getRawButton(buttonTransmissionID) ? DoubleSolenoid.Value.kForward : DoubleSolenoid.Value.kReverse);
+    
+    Timer.delay(0.02); // 5 ms
     
     /*
      * POV Layout
